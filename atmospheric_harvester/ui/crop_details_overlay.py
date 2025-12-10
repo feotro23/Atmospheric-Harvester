@@ -180,6 +180,22 @@ class CropDetailsOverlay(UIElement):
             
         screen.blit(self.font_small.render(wind_tol, True, w_color), (right_col_x + 10, y_off))
         y_off += 25
+
+        # Chill Hours (Vernalization) - New Section
+        if type_data.chill_hours_req > 0:
+            chill_accum = self.target_crop.chill_hours_accumulated
+            chill_req = type_data.chill_hours_req
+            if chill_accum < chill_req:
+                v_color = (100, 255, 255) # Cyan for cold requirement
+                # Check if currently accumulating (Temp < 5°C)
+                if self.target_crop.current_temp >= 5.0:
+                    v_color = (255, 100, 100) # Warning: Too warm to chill!
+                
+                # Format threshold using settings
+                thresh_str = self.game_ref.settings_manager.get_measurement_display(5.0, "temp")
+                chill_text = f"Vernalization: {chill_accum:.1f} / {chill_req} Hours (< {thresh_str})"
+                screen.blit(self.font_small.render(chill_text, True, v_color), (right_col_x + 10, y_off))
+                y_off += 25
         
         # GDD / Progress
         # Ensure we are below both columns

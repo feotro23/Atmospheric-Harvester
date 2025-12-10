@@ -268,8 +268,9 @@ class WeatherOverlay(UIElement):
         self.forecast_pending = False
         
         # 7-Day Forecast button (top area)
-        forecast_btn_x = self.rect.x + 620
-        forecast_btn_y = self.rect.y + 50
+        # Moved to start of 2nd column
+        forecast_btn_x = self.rect.x + 450
+        forecast_btn_y = self.rect.y + 85
         self.forecast_button = Button(
             forecast_btn_x, forecast_btn_y, 140, 35,
             "7-Day Forecast",
@@ -278,7 +279,7 @@ class WeatherOverlay(UIElement):
         
         # Back button (shown when viewing forecast)
         self.back_button = Button(
-            self.rect.x + 620, self.rect.y + 50, 140, 35,
+            self.rect.x + 450, self.rect.y + 85, 140, 35,
             "← Back",
             self._toggle_forecast
         )
@@ -393,8 +394,8 @@ class WeatherOverlay(UIElement):
         # Show button only if previewing a different location
         if preview_name and preview_name != current_loc:
             if not self.travel_button:
-                btn_x = self.rect.x + 350  # Moved to right side
-                btn_y = self.rect.y + 80   # Moved to top, below location
+                btn_x = self.rect.x + 610  # Next to forecast button
+                btn_y = self.rect.y + 85   # Aligned with forecast button
                 btn_w = 220
                 btn_h = 35
                 
@@ -530,9 +531,10 @@ class WeatherOverlay(UIElement):
         self._draw_text(screen, f"🕐 {current_time}", self.rect.x + 25, top_y + 25, (180, 180, 180))
         
         # Render forecast button or back button
+        # Render forecast button or back button
         if self.show_forecast:
-            self.back_button.rect.x = self.rect.x + 620
-            self.back_button.rect.y = self.rect.y + 50
+            self.back_button.rect.x = self.rect.x + 450
+            self.back_button.rect.y = self.rect.y + 85
             self.back_button.render(screen)
             # Render forecast view
             self._render_forecast(screen)
@@ -541,15 +543,15 @@ class WeatherOverlay(UIElement):
             self.close_button.render(screen)
             return
         else:
-            self.forecast_button.rect.x = self.rect.x + 620
-            self.forecast_button.rect.y = self.rect.y + 50
+            self.forecast_button.rect.x = self.rect.x + 450
+            self.forecast_button.rect.y = self.rect.y + 85
             self.forecast_button.render(screen)
         
         # Weather content area starts lower to make room for location/travel button
         # TWO COLUMN LAYOUT
         col1_x = self.rect.x + 25
         col2_x = self.rect.x + 450 # Second column starts halfway
-        content_y = self.rect.y + 110
+        content_y = self.rect.y + 150 # Moved down from 110
         line_height = 18
         
         # --- COLUMN 1 ---
@@ -698,8 +700,8 @@ class WeatherOverlay(UIElement):
         
         # Update travel button position if it exists
         if self.travel_button:
-            self.travel_button.rect.x = self.rect.right - 250
-            self.travel_button.rect.y = self.rect.y + 60
+            self.travel_button.rect.x = self.rect.x + 610
+            self.travel_button.rect.y = self.rect.y + 85
             self.travel_button.render(screen)
         
         # Render close button

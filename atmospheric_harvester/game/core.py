@@ -188,7 +188,13 @@ class Game:
             # Clamp moisture
             moisture = min(moisture, 1.0)
             
-            crop.update(dt, local_temp, moisture, uv_index=self.state.uv_index, snow_depth=self.state.snow_depth, wind_speed=self.state.wind_speed)
+            # Local Snow Depth Logic
+            # If it's warm enough locally, assume snow is melted around the crop
+            local_snow = self.state.snow_depth
+            if local_temp > 0:
+                local_snow = 0.0
+            
+            crop.update(dt, local_temp, moisture, uv_index=self.state.uv_index, snow_depth=local_snow, wind_speed=self.state.wind_speed)
             
         # Creature Spawns
         # Remove expired creatures
