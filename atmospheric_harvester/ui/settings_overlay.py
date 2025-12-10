@@ -38,6 +38,19 @@ class SettingsOverlay(UIElement):
             "+", self.increase_volume
         )
         
+        # Credits Button
+        self.show_credits = False
+        self.credits_button = Button(
+            self.rect.x + 150, self.rect.y + 310, 200, 50,
+            "Credits", self.toggle_credits
+        )
+        
+        # Back Button for Credits
+        self.back_button = Button(
+            self.rect.x + 150, self.rect.y + 310, 200, 50,
+            "Back", self.toggle_credits
+        )
+        
     def toggle_system(self):
         self.settings_manager.toggle_system()
         # Button text updates in render loop based on state or we can set it here
@@ -52,6 +65,9 @@ class SettingsOverlay(UIElement):
         new_vol = self.settings_manager.volume + 0.1
         self.settings_manager.set_volume(new_vol)
         
+    def toggle_credits(self):
+        self.show_credits = not self.show_credits
+        
     def open(self):
         self.visible = True
         
@@ -65,6 +81,14 @@ class SettingsOverlay(UIElement):
         if self.close_button.handle_event(event):
             return True
             
+        if self.show_credits:
+            if self.back_button.handle_event(event):
+                return True
+            return False
+            
+        if self.credits_button.handle_event(event):
+            return True
+
         if self.system_button.handle_event(event):
             return True
             
@@ -106,6 +130,11 @@ class SettingsOverlay(UIElement):
         # Close button
         self.close_button.render(screen)
         
+        if self.show_credits:
+            # Credits View
+            self._render_credits(screen)
+            return
+        
         # System Section
         sys_label = self.font_med.render("Measurement System:", True, (200, 200, 200))
         screen.blit(sys_label, (self.rect.x + 30, self.rect.y + 80))
@@ -140,3 +169,25 @@ class SettingsOverlay(UIElement):
         # Fill
         fill_w = int(bar_w * self.settings_manager.volume)
         pygame.draw.rect(screen, (100, 200, 100), (bar_x, bar_y, fill_w, bar_h), border_radius=10)
+        
+        # Credits Button
+        self.credits_button.render(screen)
+        
+    def _render_credits(self, screen):
+        # Center x
+        cx = self.rect.centerx
+        
+        lbl_1 = self.font_med.render("Created by:", True, (150, 200, 255))
+        name_1 = self.font_title.render("Drew Page", True, (255, 255, 255))
+        
+        lbl_2 = self.font_med.render("Music Track:", True, (150, 200, 255))
+        name_2 = self.font_med.render("Kevin MacLeod", True, (255, 255, 255))
+        
+        screen.blit(lbl_1, (cx - lbl_1.get_width() // 2, self.rect.y + 80))
+        screen.blit(name_1, (cx - name_1.get_width() // 2, self.rect.y + 110))
+        
+        screen.blit(lbl_2, (cx - lbl_2.get_width() // 2, self.rect.y + 180))
+        screen.blit(name_2, (cx - name_2.get_width() // 2, self.rect.y + 210))
+        
+        # Back button
+        self.back_button.render(screen)
