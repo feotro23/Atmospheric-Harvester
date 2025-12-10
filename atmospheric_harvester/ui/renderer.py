@@ -10,6 +10,8 @@ from ui.farming_overlay import FarmingOverlay
 from ui.settings_overlay import SettingsOverlay
 from ui.upgrades_overlay import UpgradesOverlay
 from ui.building_stats_overlay import BuildingStatsOverlay
+from ui.harvester_overlay import HarvesterOverlay
+from ui.crop_details_overlay import CropDetailsOverlay
 from network.geocoding import GeocodingClient
 
 class Renderer:
@@ -34,6 +36,8 @@ class Renderer:
         self.farming_overlay = None
         self.upgrades_overlay = None
         self.building_stats_overlay = None # New
+        self.crop_details_overlay = None # New
+        self.harvester_overlay = None
         self.geocoding_client = GeocodingClient()
         
         self.assets = {}
@@ -55,6 +59,9 @@ class Renderer:
             for key in ['sun', 'cloud', 'rain', 'snow', 'lightning']:
                 self.assets[key] = pygame.transform.scale(self.assets[key], (64, 64))
                 
+            self.assets['settings'] = pygame.image.load(os.path.join(asset_dir, "settings_icon.png")).convert_alpha()
+            self.assets['settings'] = pygame.transform.smoothscale(self.assets['settings'], (24, 24))
+            
         except (pygame.error, FileNotFoundError) as e:
             print(f"Failed to load UI assets: {e}")
 
@@ -84,7 +91,9 @@ class Renderer:
         self.build_overlay = BuildOverlay(self.width, self.height, self.game_ref, close_build)
         
         # New: Building Stats Overlay
-        self.building_stats_overlay = BuildingStatsOverlay(self.width, self.height, self.game_ref.state, self.world_renderer.assets)
+        self.building_stats_overlay = BuildingStatsOverlay(self.width, self.height, self.game_ref, self.world_renderer.assets)
+        self.crop_details_overlay = CropDetailsOverlay(self.width, self.height, self.game_ref, self.world_renderer.assets)
+        self.harvester_overlay = HarvesterOverlay(self.width, self.height, self.game_ref)
         
         # Settings Overlay
         self.settings_overlay = SettingsOverlay(self.width, self.height, self.game_ref.settings_manager)
@@ -217,6 +226,12 @@ class Renderer:
 
         if self.building_stats_overlay and self.building_stats_overlay.visible:
             self.building_stats_overlay.render(self.screen)
+
+        if self.harvester_overlay and self.harvester_overlay.visible:
+            self.harvester_overlay.render(self.screen)
+            
+        if self.crop_details_overlay and self.crop_details_overlay.visible:
+            self.crop_details_overlay.render(self.screen)
             
         if self.settings_overlay and self.settings_overlay.visible:
             self.settings_overlay.render(self.screen)
@@ -254,18 +269,49 @@ class Renderer:
         # Settings Button (Gear Icon)
         settings_btn_x = x + w - 35
         settings_btn_y = y + 10
-        pygame.draw.circle(self.screen, (100, 100, 100), (settings_btn_x + 12, settings_btn_y + 12), 12)
-        pygame.draw.circle(self.screen, (200, 200, 200), (settings_btn_x + 12, settings_btn_y + 12), 12, 2)
-        # Simple gear text
-        gear_text = self.font_small.render("⚙", True, (255, 255, 255))
-        self.screen.blit(gear_text, (settings_btn_x + 5, settings_btn_y + 5))
+        btn_center = (settings_btn_x + 12, settings_btn_y + 12)
+        
+        # Check hover
+        mouse_pos = pygame.mouse.get_pos()
+        is_hovered = False
+        if hasattr(self, 'settings_button_rect') and self.settings_button_rect:
+            if self.settings_button_rect.collidepoint(mouse_pos):
+                is_hovered = True
+                
+        # Draw background
+        bg_col = (80, 80, 80, 230) if is_hovered else (50, 50, 50, 0) # Transparent if not hovered
+        border_col = (255, 255, 255) if is_hovered else (180, 180, 180, 0) # Transparent if not hovered
+        
+        # Circle bg only on hover
+        if is_hovered:
+            pygame.draw.circle(self.screen, bg_col, btn_center, 15)
+            pygame.draw.circle(self.screen, border_col, btn_center, 15, 2)
+        
+        # Icon
+        if 'settings' in self.assets:
+            icon = self.assets['settings']
+            icon_rect = icon.get_rect(center=btn_center)
+            self.screen.blit(icon, icon_rect)
+        else:
+             # Fallback
+            gear_text = self.font_small.render("⚙", True, (255, 255, 255))
+            text_rect = gear_text.get_rect(center=btn_center)
+            text_rect.y += 1
+            self.screen.blit(gear_text, text_rect)
         
         # Store button rect for clicking
+        # Center was (settings_btn_x + 12, settings_btn_y + 12)
+        # Radius 15 -> Diameter 30.
+        # Rect x = Center X - 15 = settings_btn_x + 12 - 15 = settings_btn_x - 3
+        # Rect y = Center Y - 15 = settings_btn_y + 12 - 15 = settings_btn_y - 3
+        rect_x = settings_btn_x - 3
+        rect_y = settings_btn_y - 3
+        
         if not hasattr(self, 'settings_button_rect'):
-            self.settings_button_rect = pygame.Rect(settings_btn_x, settings_btn_y, 24, 24)
+            self.settings_button_rect = pygame.Rect(rect_x, rect_y, 30, 30)
         else:
-            self.settings_button_rect.x = settings_btn_x
-            self.settings_button_rect.y = settings_btn_y
+            self.settings_button_rect.x = rect_x
+            self.settings_button_rect.y = rect_y
         
         # Condition text
         cond_text = "Sunny"

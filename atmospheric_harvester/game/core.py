@@ -156,14 +156,16 @@ class Game:
             if len(self.state.energy_history) > 100: # Keep last 50 seconds
                 self.state.energy_history.pop(0)
         active_sprinklers = []
+        active_heaters = []
         for m in self.state.machines:
-            if m.type.name == "Sprinkler" and m.active:
-                # Check if it actually consumed water? 
-                # For now assume if active it's working (simplification)
-                # Ideally we'd check a flag set during update
-                active_sprinklers.append((m.x, m.y))
+            if m.active:
+                if m.type.name == "Sprinkler":
+                    active_sprinklers.append((m.x, m.y))
+                elif m.type.name == "Heater":
+                    active_heaters.append((m.x, m.y))
 
         base_moisture = self.state.humidity / 100.0
+        base_temp = self.state.temp_c
 
         for crop in self.state.crops:
             # Calculate local moisture
@@ -176,10 +178,17 @@ class Game:
                     moisture += 0.5 # Big boost
                     break # Only one sprinkler needed
             
-            # Clamp
+            # Check for nearby heaters (Radius 2)
+            local_temp = base_temp
+            for hx, hy in active_heaters:
+                dist = max(abs(crop.x - hx), abs(crop.y - hy))
+                if dist <= 2:
+                    local_temp += 10.0 # Heat boost
+
+            # Clamp moisture
             moisture = min(moisture, 1.0)
             
-            crop.update(dt, self.state.temp_c, moisture, uv_index=self.state.uv_index, snow_depth=self.state.snow_depth, wind_speed=self.state.wind_speed)
+            crop.update(dt, local_temp, moisture, uv_index=self.state.uv_index, snow_depth=self.state.snow_depth, wind_speed=self.state.wind_speed)
             
         # Creature Spawns
         # Remove expired creatures
@@ -393,8 +402,33 @@ class Game:
         self.moving_object = None
         return True, "Cancelled move"
 
+    def harvest_crop(self, crop):
+        if crop not in self.state.crops: return False
+        
+        # print(f"Harvested {crop.type.name} at {crop.x},{crop.y}")
+        self.state.crops.remove(crop)
+        
+        # Add to inventory
+        item = crop.type.yield_resource
+        amount = crop.type.yield_amount
+        self.state.inventory[item] = self.state.inventory.get(item, 0) + amount
+        
+        # Track stats
+        self.state._crops_harvested += 1
+        
+        # Chance to get seeds back
+        if item != "cactus_fruit": # Cactus doesn't give seeds easily
+            self.state.seeds[crop.type.name] = self.state.seeds.get(crop.type.name, 0) + 1
+        
+        return True
+
+    def remove_crop(self, crop):
+        """Remove a crop (e.g. dead) without harvesting."""
+        if crop not in self.state.crops: return False
+        self.state.crops.remove(crop)
+        return True
+
     def interact(self, x, y):
-        # Check bounds (assuming 10x10 map)
         # Check bounds (assuming 10x10 map)
         if not (0 <= x < 10 and 0 <= y < 10):
             return None, None
@@ -406,28 +440,18 @@ class Game:
                 existing_crop = crop
                 break
         
+        # Check for Harvester (Center Base) - Interactive
+        if x == 5 and y == 5:
+            # Check if occupied by crop/machine first? 
+            # Actually Harvester is drawn there visually by WorldRenderer.
+            # We should prioritize it if nothing else is there, or maybe always?
+            # Let's assume Harvester is the permanent base structure.
+            if not existing_crop and not any(m.x == 5 and m.y == 5 for m in self.state.machines):
+                 return "harvester_click", None
+        
         if existing_crop:
-            # Harvest if ready
-            if existing_crop.stage >= 3:
-                # print(f"Harvested {existing_crop.type.name} at {x},{y}")
-                self.state.crops.remove(existing_crop)
-                
-                # Add to inventory
-                item = existing_crop.type.yield_resource
-                amount = existing_crop.type.yield_amount
-                self.state.inventory[item] = self.state.inventory.get(item, 0) + amount
-                
-                # Track stats
-                self.state._crops_harvested += 1
-                
-                # Chance to get seeds back
-                if item != "cactus_fruit": # Cactus doesn't give seeds easily
-                    self.state.seeds[existing_crop.type.name] = self.state.seeds.get(existing_crop.type.name, 0) + 1
-                
-                return "harvest", existing_crop
-            else:
-                # print(f"Crop at {x},{y} not ready.")
-                return None, None
+            # Always return crop_click to open details panel
+            return "crop_click", existing_crop
 
         else:
             # Check for creature capture

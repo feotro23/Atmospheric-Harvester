@@ -33,6 +33,11 @@ class Machine:
         pass
 
 class WindTurbine(Machine):
+    def __init__(self, machine_type, x, y):
+        super().__init__(machine_type, x, y)
+        import random
+        self.animation_offset = random.random() * 100
+
     def update(self, dt, state, weather_data):
         if not self.active: return
         

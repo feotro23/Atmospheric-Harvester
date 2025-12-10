@@ -159,6 +159,13 @@ class AsyncGameLoop:
                     self.last_weather_poll = 0
                 continue
             
+            # Harvester Overlay
+            if self.renderer.harvester_overlay and self.renderer.harvester_overlay.handle_event(event):
+                continue
+                
+            if self.renderer.crop_details_overlay and self.renderer.crop_details_overlay.handle_event(event):
+                continue
+
             # UI Manager (For other buttons like Plant, Harvest, etc.)
             if self.renderer.ui_manager.handle_event(event):
                 continue
@@ -273,11 +280,17 @@ class AsyncGameLoop:
                             if self.renderer.building_stats_overlay:
                                 self.renderer.building_stats_overlay.open(payload)
                         elif action == "harvest":
-                            # Already handled logic in core, maybe play sound?
+                            # Should not happen via interact anymore, handled via overlay
                             pass
+                        elif action == "crop_click":
+                            if self.renderer.crop_details_overlay:
+                                self.renderer.crop_details_overlay.open(payload)
                         elif action == "creature_capture":
                             # Handled in core
                             pass
+                        elif action == "harvester_click":
+                             if self.renderer.harvester_overlay:
+                                 self.renderer.harvester_overlay.open()
                         
                 elif event.button == 3: # Right click
                     if self.game.build_selection:

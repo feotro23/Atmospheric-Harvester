@@ -21,6 +21,9 @@ class SettingsManager:
             if type == "temp": # C -> F
                 val = (value * 9/5) + 32
                 return f"{val:.1f}°F"
+            elif type == "temp_delta": # C change -> F change
+                val = value * 9/5
+                return f"{val:.1f}°F"
             elif type == "speed": # m/s -> mph
                 val = value * 2.23694
                 return f"{val:.1f} mph"
@@ -42,6 +45,7 @@ class SettingsManager:
                 
         # Metric Defaults
         if type == "temp": return f"{value:.1f}°C"
+        elif type == "temp_delta": return f"{value:.1f}°C"
         elif type == "speed": return f"{value:.1f} m/s"
         elif type == "speed_kmh": return f"{value:.1f} km/h"
         elif type == "distance": return f"{value:.1f} km"

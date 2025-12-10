@@ -74,11 +74,14 @@ class WorldRenderer:
             
             # Load Machine Assets
             self.assets['Wind Turbine'] = pygame.image.load(os.path.join(asset_dir, "iso_wind_turbine.png")).convert_alpha()
+            self.assets['Wind Turbine_base'] = self.trim_transparent_borders(pygame.image.load(os.path.join(asset_dir, "iso_wind_turbine_base.png")).convert_alpha())
+            # Do NOT trim blades to preserve center pivot point (assuming source is centered)
+            self.assets['Wind Turbine_blades'] = pygame.image.load(os.path.join(asset_dir, "iso_wind_turbine_blades.png")).convert_alpha()
             self.assets['Rain Collector'] = pygame.image.load(os.path.join(asset_dir, "iso_rain_collector.png")).convert_alpha()
             self.assets['Solar Panel'] = pygame.image.load(os.path.join(asset_dir, "iso_solar_panel.png")).convert_alpha()
             self.assets['Heater'] = pygame.image.load(os.path.join(asset_dir, "iso_heater.png")).convert_alpha()
             self.assets['Battery'] = pygame.image.load(os.path.join(asset_dir, "iso_battery.png")).convert_alpha()
-            self.assets['Water Tank'] = pygame.image.load(os.path.join(asset_dir, "iso_water_tank.png")).convert_alpha()
+            self.assets['Water Tank'] = pygame.image.load(os.path.join(asset_dir, "iso_single_water_tank.png")).convert_alpha()
             self.assets['Sprinkler'] = pygame.image.load(os.path.join(asset_dir, "iso_sprinkler.png")).convert_alpha()
             self.assets['Winter Wheat'] = pygame.image.load(os.path.join(asset_dir, "iso_crop_wheat.png")).convert_alpha()
             self.assets['Corn'] = pygame.image.load(os.path.join(asset_dir, "iso_crop_corn.png")).convert_alpha()
@@ -139,7 +142,7 @@ class WorldRenderer:
             # Scale machines to fit tile
             # They should probably be similar width to tiles, maybe a bit narrower/taller
             machine_w = self.tile_size * 1.5
-            for key in ['Wind Turbine', 'Rain Collector', 'Solar Panel', 'Heater', 'Battery', 'Water Tank', 'Sprinkler', 'Creature Stable',
+            for key in ['Wind Turbine', 'Rain Collector', 'Solar Panel', 'Heater', 'Battery', 'Sprinkler',
                         'Winter Wheat', 'Corn', 'Potato', 'Rice', 'Cactus', 'Sunflower', 'Harvester', 
                         'Winter Wheat_stage0', 'Winter Wheat_stage1', 
                         'Corn_stage0', 'Corn_stage1', 
@@ -154,6 +157,43 @@ class WorldRenderer:
                     aspect = img.get_height() / img.get_width()
                     target_h = int(machine_w * aspect)
                     self.assets[key] = pygame.transform.scale(img, (int(machine_w), target_h))
+                    
+            # Custom scaling for Wind Turbine parts (since they are trimmed)
+            # Custom scaling for Wind Turbine parts (since they are trimmed)
+            if 'Wind Turbine_base' in self.assets:
+                img = self.assets['Wind Turbine_base']
+                # Scale base by width to match other machines (approx 1.5-1.6 * tile_size)
+                target_base_w = int(self.tile_size * 1.6) 
+                aspect = img.get_height() / img.get_width()
+                target_base_h = int(target_base_w * aspect)
+                self.assets['Wind Turbine_base'] = pygame.transform.smoothscale(img, (target_base_w, target_base_h))
+                
+            if 'Wind Turbine_blades' in self.assets:
+                img = self.assets['Wind Turbine_blades']
+                # Flip blades horizontally AND vertically 
+                img = pygame.transform.flip(img, True, True)
+                
+                # Scale blades by width (span)
+                target_blade_w = int(self.tile_size * 1.6) 
+                aspect = img.get_height() / img.get_width()
+                target_blade_h = int(target_blade_w * aspect)
+                self.assets['Wind Turbine_blades'] = pygame.transform.smoothscale(img, (target_blade_w, target_blade_h))
+                
+            if 'Water Tank' in self.assets:
+                img = self.assets['Water Tank']
+                # Scale Water Tank larger to match other buildings
+                target_tank_w = int(self.tile_size * 1.7) # Reduced from 1.9
+                aspect = img.get_height() / img.get_width()
+                target_tank_h = int(target_tank_w * aspect)
+                self.assets['Water Tank'] = pygame.transform.smoothscale(img, (target_tank_w, target_tank_h))
+                
+            if 'Creature Stable' in self.assets:
+                img = self.assets['Creature Stable']
+                # Scale Creature Stable larger to match other buildings
+                target_stable_w = int(self.tile_size * 2.2)
+                aspect = img.get_height() / img.get_width()
+                target_stable_h = int(target_stable_w * aspect)
+                self.assets['Creature Stable'] = pygame.transform.smoothscale(img, (target_stable_w, target_stable_h))
                 
         except (pygame.error, FileNotFoundError) as e:
             print(f"Failed to load assets: {e}")
@@ -249,7 +289,7 @@ class WorldRenderer:
 
         # Draw Machines
         for machine in game_state.machines:
-            self.draw_machine(machine, dt)
+            self.draw_machine(machine, dt, game_state.wind_speed)
 
         for crop in game_state.crops:
             screen_x, screen_y = self.camera.apply(crop.x * half_w, crop.y * half_w)
@@ -287,7 +327,7 @@ class WorldRenderer:
                 if hasattr(creature, 'x'):
                     self.draw_creature(creature, dt)
 
-    def draw_machine(self, machine, dt):
+    def draw_machine(self, machine, dt, wind_speed=0):
         half_w = self.tile_size
         half_h = self.tile_size // 2
         screen_x, screen_y = self.camera.apply(machine.x * half_w, machine.y * half_w)
@@ -296,7 +336,7 @@ class WorldRenderer:
         
         # Check if we have an asset for this machine
         asset = self.assets.get(machine.type.name)
-        if asset:
+        if asset and machine.type.name != "Wind Turbine": # Special handling for Turbine
             # Draw asset centered at bottom
             # Asset width/height
             aw, ah = asset.get_size()
@@ -307,23 +347,208 @@ class WorldRenderer:
             dest_x = cx - aw // 2
             dest_y = cy - ah + half_h // 2 # Adjust as needed for visual fit
             self.screen.blit(asset, (dest_x, dest_y))
+            
+            # Special FX for Heater
+            if machine.type.name == "Heater" and machine.active:
+                import math, time
+                t = time.time()
+                
+                # Center point for effects approx at mid-height of asset
+                glow_cx = cx
+                # Adjust vertical center based on asset look (assuming core is middle-ish)
+                glow_cy = dest_y + ah // 2 
+
+                # 1. Pulsing Core
+                pulse = (math.sin(t * 5) + 1) / 2 # 0..1
+                radius = int(self.tile_size * 0.4 + pulse * 5)
+                
+                glow_surf = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+                # Red color with alpha pulsing - VERY LOW ALPHA
+                alpha = int(20 + pulse * 40)
+                pygame.draw.circle(glow_surf, (255, 50, 0, alpha), (radius, radius), radius)
+                self.screen.blit(glow_surf, (glow_cx - radius, glow_cy - radius), special_flags=pygame.BLEND_ADD)
+                
+                # 2. Rising Embers (Stateless)
+                for i in range(5):
+                    # Deterministic pseudo-random based on ID and time
+                    seed = i * 13.0
+                    cycle_len = 2.0
+                    local_t = (t + seed) % cycle_len
+                    norm_t = local_t / cycle_len # 0..1 progress
+                    
+                    # Wiggle up
+                    ex = glow_cx + math.sin(t * 3 + seed) * 10
+                    # Start low, rise high
+                    ey = glow_cy + 10 - (norm_t * 50) 
+                    
+                    # Fade out - VERY LOW MAX ALPHA
+                    e_alpha = int(120 * (1.0 - norm_t))
+                    if e_alpha > 0:
+                        ember_surf = pygame.Surface((6, 6), pygame.SRCALPHA)
+                        pygame.draw.circle(ember_surf, (255, 200, 100, e_alpha), (3, 3), 2)
+                        self.screen.blit(ember_surf, (int(ex)-3, int(ey)-3), special_flags=pygame.BLEND_ADD)
+
+            # Special FX for Battery
+            if machine.type.name == "Battery" and machine.active:
+                import math, time
+                t = time.time()
+                
+                glow_cx = cx
+                glow_cy = dest_y + ah // 2 
+
+                # 1. Pulsing Blue Core - REMOVED 
+                # pulse = (math.sin(t * 3) + 1) / 2 
+                # radius = int(self.tile_size * 0.4 + pulse * 3)
+                # glow_surf = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+                # alpha = int(15 + pulse * 35)
+                # pygame.draw.circle(glow_surf, (0, 150, 255, alpha), (radius, radius), radius)
+                # self.screen.blit(glow_surf, (glow_cx - radius, glow_cy - radius), special_flags=pygame.BLEND_ADD)
+                
+                # 2. Rising Energy Motes
+                for i in range(4):
+                    seed = i * 7.0
+                    cycle_len = 2.5
+                    local_t = (t + seed) % cycle_len
+                    norm_t = local_t / cycle_len
+                    
+                    # Vertical rise with slight jitter
+                    ex = glow_cx + math.sin(t * 10 + seed) * 3 
+                    ey = glow_cy + 15 - (norm_t * 40)
+                    
+                    # VERY LOW MAX ALPHA
+                    e_alpha = int(120 * (1.0 - norm_t))
+                    if e_alpha > 0:
+                        spark_surf = pygame.Surface((4, 4), pygame.SRCALPHA)
+                        pygame.draw.circle(spark_surf, (100, 200, 255, e_alpha), (2, 2), 2)
+                        self.screen.blit(spark_surf, (int(ex)-2, int(ey)-2), special_flags=pygame.BLEND_ADD)
+
+            # Special FX for Rain Collector
+            if machine.type.name == "Rain Collector" and machine.active:
+                import math, time
+                t = time.time()
+                
+                # Funnel dimensions roughly
+                funnel_top_y = dest_y + 5
+                funnel_bottom_y = dest_y + ah * 0.5 
+                
+                # Render more, smaller, faster drops
+                for i in range(10):
+                    seed = i * 123.45
+                    cycle_len = 0.8 # Faster cycle
+                    local_t = (t + seed) % cycle_len
+                    norm_t = local_t / cycle_len
+                    
+                    # Randomize X within funnel width (approx 30px wide?)
+                    # Deterministic randomness
+                    x_seed = (seed * 997) % 30 - 15 
+                    
+                    dx = cx + x_seed
+                    # Start higher to fall IN
+                    dy = funnel_top_y - 15 + (norm_t * 40) 
+                    
+                    # Only draw if within vertical bounds of 'falling in'
+                    if dy < funnel_bottom_y:
+                        # Drop is a small vertical streak
+                        drop_surf = pygame.Surface((2, 5), pygame.SRCALPHA)
+                        alpha = int(200 * (1.0 - norm_t)) if norm_t > 0.5 else 200
+                        # Light blue streak
+                        pygame.draw.line(drop_surf, (200, 230, 255, alpha), (1, 0), (1, 4), 2)
+                        self.screen.blit(drop_surf, (int(dx)-1, int(dy)), special_flags=pygame.BLEND_ADD)
+
+            # Special FX for Water Tank
+            if machine.type.name == "Water Tank":
+                import math, time
+                t = time.time()
+                
+                # Bubbles rising
+                tank_cx = cx
+                # Adjust vertical range - shift UP slightly
+                tank_bottom_y = dest_y + ah * 0.77 # Was 0.82
+                tank_top_y = dest_y + ah * 0.50 # Was 0.55 
+                
+                for i in range(8):
+                    seed = i * 44.0
+                    cycle_len = 3.0 # Slow rise
+                    local_t = (t + seed) % cycle_len
+                    norm_t = local_t / cycle_len
+                    
+                    # Wiggle - wider to fill the tank
+                    bx = tank_cx + math.sin(t * 2 + seed) * 4 + ((seed * 100) % 20 - 10) # +/- 10px offset
+                    by = tank_bottom_y - (norm_t * (tank_bottom_y - tank_top_y))
+                    
+                    # Fade in then out (sin wave 0..PI)
+                    b_alpha = int(120 * math.sin(norm_t * 3.14159)) 
+                    if b_alpha > 0:
+                        # Make bigger surface for better bubble
+                        bubble_surf = pygame.Surface((6, 6), pygame.SRCALPHA)
+                        
+                        # outline circle
+                        pygame.draw.circle(bubble_surf, (200, 240, 255, b_alpha), (3, 3), 2, 1) 
+                        
+                        # little shine (highlight)
+                        shine_alpha = int(b_alpha * 1.5) if b_alpha * 1.5 < 255 else 255
+                        pygame.draw.circle(bubble_surf, (255, 255, 255, shine_alpha), (4, 2), 1)
+                        
+                        self.screen.blit(bubble_surf, (int(bx)-3, int(by)-3), special_flags=pygame.BLEND_ADD)
+
             return
 
         # Simple shapes for now (Fallback)
         if machine.type.name == "Wind Turbine":
-            # Tall pole + rotating blades
-            pygame.draw.line(self.screen, (200, 200, 200), (cx, cy), (cx, cy - 60), 4)
+            # Check for base and blades assets
+            base_asset = self.assets.get('Wind Turbine_base')
+            blades_asset = self.assets.get('Wind Turbine_blades')
             
-            import math
-            import time
-            t = time.time() * 5 # Rotation speed
-            
-            # 3 Blades
-            for i in range(3):
-                angle = t + (i * 2 * math.pi / 3)
-                bx = cx + math.cos(angle) * 25
-                by = (cy - 60) + math.sin(angle) * 25
-                pygame.draw.line(self.screen, (255, 255, 255), (cx, cy - 60), (bx, by), 3)
+            if base_asset and blades_asset:
+                # Draw Base
+                bw, bh = base_asset.get_size()
+                base_x = cx - bw // 2
+                base_y = cy - bh + half_h // 2
+                self.screen.blit(base_asset, (base_x, base_y))
+                
+                # Draw Blades
+                if hasattr(machine, 'animation_offset'):
+                     # Calculate rotation angle
+                     import time
+                     
+                     # wind_speed ranges ~0-20 m/s usually? 
+                     # Rotation speed:
+                     # Always rotate for now to ensure visibility
+                     # Use modulo 360 to prevent huge number issues
+                     rotation_speed = 120.0 # Slower, clearer speed
+                     angle = ((time.time() + machine.animation_offset) * rotation_speed) % 360
+                     
+                     # Rotate blades
+                     # Ideally we rotate around the center of the image.
+                     rotated_blades = pygame.transform.rotate(blades_asset, -angle) # Negative for clockwise?
+                     
+                     # Blit center
+                     # We need to know where the "hub" is relative to the base.
+                     # Assuming blades asset is centered on hub.
+                     # Assuming base hub is at top center?
+                     # Let's guess: blade center should be at top of base + offset
+                     # Since we trimmed the base, the top pixel is the top of the tower/structure.
+                     hub_x = cx
+                     hub_y = base_y + int(bh * 0.08) # Pivot higher (8% down) - moving UP 'a little bit more'
+                     
+                     rw, rh = rotated_blades.get_size()
+                     self.screen.blit(rotated_blades, (hub_x - rw // 2, hub_y - rh // 2))
+                     
+            else:
+                # Fallback drawing
+                # Tall pole + rotating blades
+                pygame.draw.line(self.screen, (200, 200, 200), (cx, cy), (cx, cy - 60), 4)
+                
+                import math
+                import time
+                t = time.time() * 5 # Rotation speed
+                
+                # 3 Blades
+                for i in range(3):
+                    angle = t + (i * 2 * math.pi / 3)
+                    bx = cx + math.cos(angle) * 25
+                    by = (cy - 60) + math.sin(angle) * 25
+                    pygame.draw.line(self.screen, (255, 255, 255), (cx, cy - 60), (bx, by), 3)
                 
         elif machine.type.name == "Solar Panel":
             # Angled rectangle

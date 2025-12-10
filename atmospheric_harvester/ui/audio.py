@@ -12,9 +12,14 @@ class SoundManager:
             pygame.mixer.init()
             self.initialized = True
             
+            # Resolve assets dir relative to this file
+            # ui/audio.py -> ../assets/sfx
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.sfx_dir = os.path.join(base_dir, "assets", "sfx")
+            
             # Check if sfx dir exists
-            if not os.path.exists("assets/sfx"):
-                print("Warning: assets/sfx directory not found. Audio disabled.")
+            if not os.path.exists(self.sfx_dir):
+                print(f"Warning: {self.sfx_dir} directory not found. Audio disabled.")
                 return
 
             self._load_sounds()
@@ -23,12 +28,13 @@ class SoundManager:
 
     def _load_sounds(self):
         # SFX
-        self._load_sound("click", "assets/sfx/click.wav")
-        self._load_sound("upgrade", "assets/sfx/upgrade.wav")
+        self._load_sound("click", os.path.join(self.sfx_dir, "click.wav"))
+        self._load_sound("upgrade", os.path.join(self.sfx_dir, "upgrade.wav"))
         
         # Loops
-        self._load_sound("wind", "assets/sfx/wind_loop.wav")
-        self._load_sound("rain", "assets/sfx/rain_loop.wav")
+        self._load_sound("wind", os.path.join(self.sfx_dir, "wind_loop.wav"))
+        self._load_sound("rain", os.path.join(self.sfx_dir, "rain_loop.wav"))
+        self._load_sound("music", os.path.join(self.sfx_dir, "Paradise_Found.mp3"))
 
     def _load_sound(self, name, path):
         if os.path.exists(path):
@@ -63,6 +69,11 @@ class SoundManager:
             self.channels["rain"] = self.sounds["rain"].play(loops=-1)
             self.channels["rain"].set_volume(0)
 
+        # Start music loop on Channel 2
+        if "music" in self.sounds:
+            self.channels["music"] = self.sounds["music"].play(loops=-1)
+            self.channels["music"].set_volume(0)
+
     def update(self, game_state):
         if not self.initialized: return
         
@@ -81,3 +92,8 @@ class SoundManager:
         rain_vol = min(1.0, game_state.rain_vol / 5.0)
         if "rain" in self.channels and self.channels["rain"]:
             self.channels["rain"].set_volume(rain_vol * 0.6 * master_vol)
+            
+        # Music Volume
+        # Constant background, lower volume (30%)
+        if "music" in self.channels and self.channels["music"]:
+            self.channels["music"].set_volume(0.3 * master_vol)

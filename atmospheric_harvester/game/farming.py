@@ -24,6 +24,8 @@ class Crop:
         self.accumulated_heat = 0.0 # ATU
         self.chill_hours_accumulated = 0.0
         self.water_stress = 0.0
+        self.current_temp = 0.0
+        self.current_moisture = 0.0
 
     @property
     def gdd_accumulated(self):
@@ -38,6 +40,10 @@ class Crop:
         return "Growing"
         
     def update(self, dt, temp, soil_moisture, et0=0.0, uv_index=0.0, snow_depth=0.0, wind_speed=0.0):
+        # Store current conditions for UI
+        self.current_temp = temp
+        self.current_moisture = soil_moisture
+        
         # Weather Data passed directly
         
         # 0. Chill Hours (Vernalization)

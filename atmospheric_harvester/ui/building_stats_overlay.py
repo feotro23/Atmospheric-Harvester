@@ -3,7 +3,7 @@ from .theme import Theme
 from .ui_manager import UIElement, Button
 
 class BuildingStatsOverlay(UIElement):
-    def __init__(self, screen_width, screen_height, state, assets=None):
+    def __init__(self, screen_width, screen_height, game_ref, assets=None):
         # Center overlay - Increased size
         w = 600
         h = 500
@@ -11,7 +11,8 @@ class BuildingStatsOverlay(UIElement):
         y = (screen_height - h) // 2
         super().__init__(x, y, w, h)
         
-        self.state = state
+        self.game_ref = game_ref
+        self.state = game_ref.state
         self.assets = assets or {}
         self.visible = False
         self.target_machine = None
@@ -173,8 +174,13 @@ class BuildingStatsOverlay(UIElement):
                  
         elif name == "Sprinkler":
             info_lines.append("Consumes 1.0 L/s when active.")
+            info_lines.append("Effect Range: 2 Tiles")
+            info_lines.append("Water Output: +50% Moisture")
         elif name == "Heater":
             info_lines.append("Consumes 10.0 J/s when active.")
+            heat_val = self.game_ref.settings_manager.get_measurement_display(10.0, "temp_delta")
+            info_lines.append(f"Heat Output: +{heat_val}")
+            info_lines.append("Effect Range: 2 Tiles")
             
         y_off = 110
         for line in info_lines:
