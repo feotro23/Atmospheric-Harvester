@@ -3,8 +3,8 @@
 A dynamic resources management and farming game powered by **real-time weather data**.  
 *Harvest resources from the atmosphere, grow weather-dependent crops, and build a sustainable sky-island base.*
 
-![Screenshot](assets/iso_grass_1763665136323.png) 
-*(Note: Replace with actual screenshot)*
+<img width="1922" height="1112" alt="image" src="https://github.com/user-attachments/assets/5e26151a-0f9e-42bc-b9e6-614b062a6ce6" />
+
 
 ## 🎮 Gameplay
 You are an "Atmospheric Harvester" stationed on a floating island. Your goal is to collect energy, water, and biomass to expand your base and discover new crops and creatures.
