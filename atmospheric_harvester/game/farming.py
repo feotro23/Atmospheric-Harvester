@@ -1,5 +1,5 @@
 class CropType:
-    def __init__(self, name, description, icon_name, base_gdd, optimal_temp_min, optimal_temp_max, chill_hours_req=0, water_need=0.2, yield_amount=1, yield_resource="biomass", wind_tolerance=50.0, base_value=1):
+    def __init__(self, name, description, icon_name, base_gdd, optimal_temp_min, optimal_temp_max, chill_hours_req=0, water_need=0.2, yield_amount=1, yield_resource="biomass", wind_tolerance=50.0, base_value=1, seed_cost=10):
         self.name = name
         self.description = description
         self.icon_name = icon_name
@@ -12,6 +12,7 @@ class CropType:
         self.yield_resource = yield_resource # "biomass" or specific item name if inventory exists
         self.wind_tolerance = wind_tolerance # Max wind speed (km/h) before damage
         self.base_value = base_value # Credit value per unit
+        self.seed_cost = seed_cost # Cost to buy 1 seed
 
 class Crop:
     def __init__(self, type: CropType, x=0, y=0):
@@ -119,7 +120,8 @@ WHEAT = CropType(
     yield_amount=5,
     yield_resource="wheat",
     wind_tolerance=60.0,
-    base_value=2
+    base_value=2,
+    seed_cost=10
 )
 
 CORN = CropType(
@@ -134,7 +136,8 @@ CORN = CropType(
     yield_amount=8,
     yield_resource="corn",
     wind_tolerance=40.0, # Vulnerable to wind
-    base_value=3
+    base_value=3,
+    seed_cost=15
 )
 
 POTATO = CropType(
@@ -149,7 +152,8 @@ POTATO = CropType(
     yield_amount=6,
     yield_resource="potato",
     wind_tolerance=80.0, # Underground, very safe
-    base_value=2
+    base_value=2,
+    seed_cost=12
 )
 
 RICE = CropType(
@@ -164,7 +168,8 @@ RICE = CropType(
     yield_amount=10,
     yield_resource="rice",
     wind_tolerance=50.0,
-    base_value=4
+    base_value=4,
+    seed_cost=20
 )
 
 CACTUS = CropType(
@@ -179,7 +184,8 @@ CACTUS = CropType(
     yield_amount=3,
     yield_resource="cactus_fruit",
     wind_tolerance=100.0, # Very tough
-    base_value=5
+    base_value=5,
+    seed_cost=25
 )
 
 SUNFLOWER = CropType(
@@ -194,7 +200,8 @@ SUNFLOWER = CropType(
     yield_amount=4,
     yield_resource="sunflower_seeds",
     wind_tolerance=35.0, # Very vulnerable to wind
-    base_value=6
+    base_value=6,
+    seed_cost=30
 )
 
 ALL_CROPS = [WHEAT, CORN, POTATO, RICE, CACTUS, SUNFLOWER]

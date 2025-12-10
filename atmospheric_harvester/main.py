@@ -148,6 +148,10 @@ class AsyncGameLoop:
             if hasattr(self.renderer, 'building_stats_overlay') and self.renderer.building_stats_overlay.handle_event(event):
                 continue
 
+            # Shop Overlay Priority
+            if hasattr(self.renderer, 'shop_overlay') and self.renderer.shop_overlay.handle_event(event):
+                continue
+
             # Weather overlay gets priority
             if self.renderer.weather_overlay and self.renderer.weather_overlay.handle_event(event):
                 # Track that weather overlay was opened for missions

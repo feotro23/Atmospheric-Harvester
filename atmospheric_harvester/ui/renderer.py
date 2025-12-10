@@ -12,6 +12,7 @@ from ui.upgrades_overlay import UpgradesOverlay
 from ui.building_stats_overlay import BuildingStatsOverlay
 from ui.harvester_overlay import HarvesterOverlay
 from ui.crop_details_overlay import CropDetailsOverlay
+from ui.shop_overlay import ShopOverlay
 from network.geocoding import GeocodingClient
 
 class Renderer:
@@ -98,6 +99,9 @@ class Renderer:
         # Settings Overlay
         self.settings_overlay = SettingsOverlay(self.width, self.height, self.game_ref.settings_manager)
         
+        # Shop Overlay
+        self.shop_overlay = ShopOverlay(self.width, self.height, self.game_ref)
+        
         # Missions Overlay
         self.missions_overlay = MissionsOverlay(self.width, self.height, self.game_ref)
         
@@ -149,6 +153,15 @@ class Renderer:
             
         btn_farm = Button(start_x, start_y, btn_w, btn_h, "Farm (F)", toggle_farming)
         self.ui_manager.add_element(btn_farm)
+        start_x += btn_w + spacing
+        
+        # Shop (S)
+        def toggle_shop():
+            if self.shop_overlay.visible: self.shop_overlay.close()
+            else: self.shop_overlay.open()
+            
+        btn_shop = Button(start_x, start_y, btn_w, btn_h, "Shop (S)", toggle_shop)
+        self.ui_manager.add_element(btn_shop)
         start_x += btn_w + spacing
         
         # Missions (M)
@@ -235,6 +248,9 @@ class Renderer:
             
         if self.settings_overlay and self.settings_overlay.visible:
             self.settings_overlay.render(self.screen)
+            
+        if self.shop_overlay and self.shop_overlay.visible:
+            self.shop_overlay.render(self.screen)
             
         pygame.display.flip()
 
