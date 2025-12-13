@@ -119,7 +119,7 @@ class MissionManager:
         self.add_mission(Mission(
             uid="tutorial_welcome",
             name="Welcome to the Harvester",
-            description="Open the weather overlay to see current conditions (Press W or click Weather button)",
+            description="Open the weather overlay to see current conditions (Click the Weather button - upper left corner)",
             tier=MissionTier.TUTORIAL,
             reward=MissionReward(energy=10),
             check_condition=lambda gs: hasattr(gs, '_weather_overlay_opened') and gs._weather_overlay_opened
