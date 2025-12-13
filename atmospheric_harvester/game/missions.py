@@ -328,6 +328,158 @@ class MissionManager:
             prerequisites=["farming_potato_famine"]
         ))
 
+        # ===== WEATHER MISSIONS (New) =====
+        
+        self.add_mission(Mission(
+            uid="weather_freeze",
+            name="Deep Freeze",
+            description="Experience freezing temperatures (< 0°C)",
+            tier=MissionTier.BASIC,
+            reward=MissionReward(energy=50),
+            check_condition=lambda gs: gs.temp_c < 0.0,
+            prerequisites=["tutorial_welcome"]
+        ))
+
+        self.add_mission(Mission(
+            uid="weather_heat",
+            name="Heat Wave",
+            description="Experience hot temperatures (> 30°C)",
+            tier=MissionTier.BASIC,
+            reward=MissionReward(energy=50, water=10),
+            check_condition=lambda gs: gs.temp_c > 30.0,
+            prerequisites=["tutorial_welcome"]
+        ))
+
+        self.add_mission(Mission(
+            uid="weather_storm",
+            name="Storm Chaser",
+            description="Encounter high storm potential (CAPE > 500) or a Thunderstorm",
+            tier=MissionTier.INTERMEDIATE,
+            reward=MissionReward(energy=100, biomass=20),
+            check_condition=lambda gs: gs.cape > 500 or gs.weather_code in [95, 96, 99],
+            prerequisites=["weather_freeze"] # Just link one basic one to start chain
+        ))
+
+        # ===== CREATURE MISSIONS (New) =====
+
+        self.add_mission(Mission(
+            uid="creature_first",
+            name="Creature Hunter",
+            description="Collect your first creature (click on wandering creatures)",
+            tier=MissionTier.BASIC,
+            reward=MissionReward(biomass=100),
+            check_condition=lambda gs: len(gs.collected_creatures) >= 1,
+            prerequisites=["tutorial_welcome"]
+        ))
+
+        self.add_mission(Mission(
+            uid="creature_zoo",
+            name="Zoo Keeper",
+            description="Collect 3 distinct types of creatures",
+            tier=MissionTier.INTERMEDIATE,
+            reward=MissionReward(biomass=200, water=100),
+            check_condition=lambda gs: len(set(c.type.name for c in gs.collected_creatures)) >= 3,
+            prerequisites=["creature_first"]
+        ))
+
+        # ===== RESOURCE MISSIONS (New) =====
+
+        self.add_mission(Mission(
+            uid="resource_energy_cap",
+            name="Battery Bank",
+            description="Store 1000 Energy",
+            tier=MissionTier.INTERMEDIATE,
+            reward=MissionReward(biomass=200),
+            check_condition=lambda gs: gs.resources.energy >= 1000,
+            prerequisites=["basic_energy_milestone"]
+        ))
+
+        self.add_mission(Mission(
+            uid="resource_water_cap",
+            name="Water Tank",
+            description="Store 500 Water",
+            tier=MissionTier.INTERMEDIATE,
+            reward=MissionReward(biomass=200),
+            check_condition=lambda gs: gs.resources.water >= 500,
+            prerequisites=["basic_water_collection"]
+        ))
+
+        # ===== TECH MISSIONS (New Round 2) =====
+
+        self.add_mission(Mission(
+            uid="upgrade_wind",
+            name="Better Blades",
+            description="Upgrade Wind Turbine efficiency (Level 1)",
+            tier=MissionTier.INTERMEDIATE,
+            reward=MissionReward(energy=50),
+            check_condition=lambda gs: gs.upgrades.get("turbine_eff", 0) >= 1,
+            prerequisites=["basic_wind_power"]
+        ))
+
+        self.add_mission(Mission(
+            uid="upgrade_solar",
+            name="Solar Tech",
+            description="Upgrade Solar efficiency (Level 1)",
+            tier=MissionTier.INTERMEDIATE,
+            reward=MissionReward(energy=50),
+            check_condition=lambda gs: gs.upgrades.get("solar_eff", 0) >= 1,
+            prerequisites=["basic_solar_power"]
+        ))
+
+        self.add_mission(Mission(
+            uid="upgrade_max",
+            name="Tech Maximizer",
+            description="Reach Level 3 on any upgrade",
+            tier=MissionTier.ADVANCED,
+            reward=MissionReward(energy=500, biomass=100),
+            check_condition=lambda gs: any(lvl >= 3 for lvl in gs.upgrades.values()),
+            prerequisites=["upgrade_wind"] # Soft requirement
+        ))
+
+        # ===== WEATHER EXPERT MISSIONS (New Round 2) =====
+
+        self.add_mission(Mission(
+            uid="weather_rain",
+            name="Rain Dancer",
+            description="Experience Rain conditions",
+            tier=MissionTier.BASIC,
+            reward=MissionReward(water=100),
+            check_condition=lambda gs: gs.rain_vol > 0 or gs.weather_code in [51, 53, 55, 61, 63, 65, 80, 81, 82],
+            prerequisites=["basic_water_collection"] 
+        ))
+
+        self.add_mission(Mission(
+            uid="weather_snow",
+            name="Snow Walker",
+            description="Experience Snow conditions",
+            tier=MissionTier.BASIC,
+            reward=MissionReward(water=100),
+            check_condition=lambda gs: gs.snow_depth > 0 or (gs.temp_c < 0 and gs.rain_vol > 0) or gs.weather_code in [71, 73, 75, 77, 85, 86],
+            prerequisites=["weather_freeze"]
+        ))
+
+        # ===== ECONOMY MISSIONS (New Round 2) =====
+
+        self.add_mission(Mission(
+            uid="economy_first",
+            name="First Sale",
+            description="Earn 10 Credits (Sell items)",
+            tier=MissionTier.BASIC,
+            reward=MissionReward(energy=50), # Credits reward not supported in MissionReward class init directly yet, sticking to resources
+            check_condition=lambda gs: gs.resources.total_credits_earned >= 10,
+            prerequisites=["tutorial_harvest"]
+        ))
+
+        self.add_mission(Mission(
+            uid="economy_1000",
+            name="Market Maker",
+            description="Earn 1000 Credits total",
+            tier=MissionTier.ADVANCED,
+            reward=MissionReward(biomass=200),
+            check_condition=lambda gs: gs.resources.total_credits_earned >= 1000,
+            prerequisites=["economy_first"]
+        ))
+
     def add_mission(self, mission: Mission):
         """Add a mission to the manager."""
         self.missions[mission.uid] = mission

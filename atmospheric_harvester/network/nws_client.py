@@ -217,7 +217,14 @@ class NWSClient:
             
             # Temperature & Humidity
             "temp_2m": temp_c,
-            "apparent_temp": get_value("windChill") if temp_c < 10 else get_value("heatIndex", temp_c),
+            "temp_2m": temp_c,
+            "apparent_temp": self._calculate_feels_like(
+                temp_c, 
+                get_value("windChill", None), 
+                get_value("heatIndex", None), 
+                wind_ms, 
+                get_value("relativeHumidity")
+            ),
             "dewpoint": get_value("dewpoint"),
             "humidity": get_value("relativeHumidity"),
             
@@ -369,6 +376,57 @@ class NWSClient:
         # Default to partly cloudy
         return 2
     
+    def _calculate_feels_like(self, temp_c: float, wind_chill: Optional[float], 
+                             heat_index: Optional[float], wind_ms: float, humidity: float) -> float:
+        """
+        Calculate 'Feels Like' temperature.
+        
+        Logic:
+        1. Use NWS provided windChill or heatIndex if available.
+        2. If temp <= 10°C (50°F), calculate Wind Chill.
+        3. If temp >= 27°C (80°F), calculate Heat Index.
+        4. Otherwise return actual temperature.
+        """
+        # 1. Trust NWS provided values if they trigger
+        if wind_chill is not None:
+            return wind_chill
+        if heat_index is not None:
+            return heat_index
+            
+        # 2. Wind Chill (Valid for T <= 10°C and Wind > 4.8 km/h)
+        wind_kmh = wind_ms * 3.6
+        if temp_c <= 10.0 and wind_kmh > 4.8:
+            # Formula: 13.12 + 0.6215*T - 11.37*V^0.16 + 0.3965*T*V^0.16
+            return 13.12 + (0.6215 * temp_c) - (11.37 * (wind_kmh ** 0.16)) + (0.3965 * temp_c * (wind_kmh ** 0.16))
+            
+        # 3. Heat Index (Valid for T >= 27°C)
+        if temp_c >= 27.0:
+            # Simple approximation if humidity not provided
+            if not humidity:
+                return temp_c
+                
+            # Rothfusz regression (requires T in F)
+            T = (temp_c * 9/5) + 32
+            RH = humidity
+            
+            HI = -42.379 + 2.04901523*T + 10.14333127*RH - 0.22475541*T*RH - \
+                 6.83783e-3*T*T - 5.481717e-2*RH*RH + 1.22874e-3*T*T*RH + \
+                 8.5282e-4*T*RH*RH - 1.99e-6*T*T*RH*RH
+                 
+            # Adjustments
+            if RH < 13 and 80 <= T <= 112:
+                adj = ((13-RH)/4)*(((17-abs(T-95.))/17)**0.5)
+                HI -= adj
+            elif RH > 85 and 80 <= T <= 87:
+                adj = ((RH-85)/10) * ((87-T)/5)
+                HI += adj
+                
+            # Convert back to C
+            return (HI - 32) * 5/9
+            
+        # 4. Standard Temp
+        return temp_c
+
     def _is_daytime(self) -> bool:
         """
         Simple daytime check based on current hour.
@@ -463,6 +521,7 @@ async def main():
         print(f"\nTemperature: {data['temp']:.1f}°C ({data['temp'] * 9/5 + 32:.1f}°F)")
         print(f"Humidity: {data['humidity']:.1f}%")
         print(f"Wind: {data['wind_speed']:.1f} m/s from {data['wind_dir']}°")
+        print(f"Feels Like: {data['apparent_temp']:.1f}°C")
         print(f"Conditions: {data.get('_nws_text', 'Unknown')}")
         print(f"Station: {data.get('_nws_station', 'Unknown')}")
     else:
