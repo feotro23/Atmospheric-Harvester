@@ -112,6 +112,13 @@ class WorldRenderer:
             self.assets['terrain_rock'] = pygame.image.load(os.path.join(asset_dir, "iso_terrain_rock.png")).convert_alpha()
             self.assets['terrain_snow'] = pygame.image.load(os.path.join(asset_dir, "iso_terrain_snow.png")).convert_alpha()
             
+            # Island Base Assets
+            self.assets['base_rock'] = pygame.image.load(os.path.join(asset_dir, "iso_island_base_rock.png")).convert_alpha()
+            try:
+                self.assets['base_bottom'] = pygame.image.load(os.path.join(asset_dir, "iso_island_base_bottom.png")).convert_alpha()
+            except:
+                self.assets['base_bottom'] = self.assets['base_rock'] # Fallback
+            
             # Creature Assets
             self.assets['Petrichor Slime'] = pygame.image.load(os.path.join(asset_dir, "iso_creature_petrichor_slime.png")).convert_alpha()
             self.assets['Fulgarite Golem'] = pygame.image.load(os.path.join(asset_dir, "iso_creature_fulgarite_golem.png")).convert_alpha()
@@ -139,6 +146,14 @@ class WorldRenderer:
                 target_h = int(target_w * aspect)
                 self.assets[key] = pygame.transform.scale(img, (target_w, target_h))
                 
+            # Scale Island Base Assets
+            for key in ['base_rock', 'base_bottom']:
+                if key in self.assets and self.assets[key]:
+                    img = self.assets[key]
+                    aspect = img.get_height() / img.get_width()
+                    target_base_h = int(target_w * aspect)
+                    self.assets[key] = pygame.transform.scale(img, (target_w, target_base_h))
+
             # Scale machines to fit tile
             # They should probably be similar width to tiles, maybe a bit narrower/taller
             machine_w = self.tile_size * 1.5
@@ -214,15 +229,14 @@ class WorldRenderer:
         # 1. Render Island Base (Depth)
         # Thicker base with jagged edges
         depth_layers = 15
-        layer_offset = 10
+        layer_offset = 15 # Increased offset for blockier look with textures
         
-        soil_img = self.assets.get('soil')
+        base_rock_img = self.assets.get('base_rock')
+        base_bottom_img = self.assets.get('base_bottom')
+        soil_img = self.assets.get('soil') # Fallback
         grass_img = self.assets.get('grass')
         
-        # Center the map on screen
-        # We can adjust camera scroll, or just rely on camera.apply() if it centers 0,0?
-        # IsometricCamera centers (0,0) at screen center? No, it centers based on width/height.
-        # Let's rely on the camera class for now.
+        # Determine the "lowest" visible layer for each column to place the tip
         
         for y in range(rows):
             for x in range(cols):
@@ -230,27 +244,81 @@ class WorldRenderer:
                 screen_x, screen_y = self.camera.apply(x * half_w, y * half_w)
                 
                 # Draw Depth Layers
-                if soil_img:
-                    for d in range(depth_layers, 0, -1):
-                        # Jagged Logic:
-                        # Taper the island as it goes deeper.
-                        # Simple cone/pyramid shape:
-                        # If depth > X, only draw if not on edge.
+                # We want a stack of rocks, and the bottom-most one should be the 'tip' if it's the last one for this logical column.
+                # But here we are just drawing a generic stack.
+                # To make it look like a floating island, we taper it.
+                
+                max_depth_for_col = depth_layers
+                # Taper logic:
+                # Distance from center?
+                # Simple logic: closer to edge = fewer layers.
+                
+                # Let's compute a "depth" for this specific x,y
+                # Distance from center
+                cx, cy = cols / 2, rows / 2
+                dist = ((x - cx)**2 + (y - cy)**2)**0.5
+                max_dist = (cols**2 + rows**2)**0.5 / 2
+                
+                # Normalized distance 0..1 (1 is edge)
+                norm_dist = dist / max_dist
+                
+                # Depth decreases as we get closer to edge
+                col_depth = int(depth_layers * (1.1 - norm_dist))
+                if col_depth < 2: col_depth = 2
+                
+                # Draw the column
+                # Draw from bottom up to avoid overdraw issues if we were doing strict painter's algo, 
+                # but for isometric stack downwards, we usually draw top-down or bottom-up?
+                # In this loop (y, x), we draw "back to front". 
+                # For a single column, we should draw bottom to top? 
+                # Actually, standard iso: draw furthest tiles first.
+                # Within a tile stack: draw deepest layer first?
+                # Yes, deepest layer is 'behind' / 'below'.
+                
+                dest_x = screen_x - half_w
+                
+                for d in range(col_depth, 0, -1):
+                    # d is layer index from surface down.
+                    # so d=col_depth is element at bottom.
+                    
+                    dy = screen_y + d * layer_offset
+                    
+                    img_to_draw = base_rock_img if base_rock_img else soil_img
+                    
+                    # If it is the very bottom layer, use the tip
+                    if d == col_depth:
+                        if base_bottom_img:
+                             img_to_draw = base_bottom_img
+                    
+                    if img_to_draw:
+                        # Center the image? 
+                        # Assumes images are scaled to target_w wide.
+                        # target_w is tile_size * 2 (full width of iso tile)
+                        # We blit at dest_x which is screen_x - half_w.
+                        # screen_x is CENTER of tile. half_w is dist to left edge.
+                        # So dest_x is LEFT edge of tile sprite box.
+                        # This seems correct for standard iso tile blitting if sprite is WxH.
                         
-                        should_draw = True
-                        if d > 5:
-                            # Erode 1 tile ring every 3 layers?
-                            erosion = (d - 5) // 3
-                            if x < erosion or x >= cols - erosion or y < erosion or y >= rows - erosion:
-                                should_draw = False
-                                
-                        # Add some noise?
-                        if should_draw:
-                             # Offset downwards
-                            dy = screen_y + d * layer_offset
-                            dest_x = screen_x - half_w
-                            dest_y = dy
-                            self.screen.blit(soil_img, (dest_x, dest_y))
+                        # However, for 'tip' or varying heights, we might need to adjust y.
+                        # If the tip image is tall, we need to adjust.
+                        
+                        iw, ih = img_to_draw.get_size()
+                        # We want the 'top surface' of this block to align with dy.
+                        # For a standard block, top surface center is at some offset?
+                        # Let's assume the sprite is a cube.
+                        # We just blit it at dy?
+                        
+                        # Adjust for image height.
+                        # Usually for a tile at screen_y, we blit at screen_y - height_correction.
+                        # But here dy describes the logical center/base?
+                        # Let's revert to simple stacking:
+                        # blit(img, (dest_x, dy)) assumes top-left of image is at dest_x, dy.
+                        # This places the image *below* the previous one.
+                        
+                        # Let's try to center it vertically based on image properties?
+                        # No, just pile them.
+                        
+                        self.screen.blit(img_to_draw, (dest_x, dy))
                 
                 # Draw Surface Tile - Select based on biome
                 # Biome mapping to terrain assets
