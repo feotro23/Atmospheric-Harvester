@@ -188,7 +188,10 @@ class FarmingOverlay:
             
             info = f"Water: {crop.water_need*100:.0f}% | Temp: {min_t}-{max_t}"
             info_text = self.font_small.render(info, True, Theme.TEXT_DIM)
-            screen.blit(info_text, (rect.x + 200, y + 10))
+            
+            # Right align stats to the left of the button area (approx rect.right - 100)
+            stats_x = rect.right - 100 - info_text.get_width() - 10
+            screen.blit(info_text, (stats_x, y + 10))
             
             # Plant Button
             if count > 0:

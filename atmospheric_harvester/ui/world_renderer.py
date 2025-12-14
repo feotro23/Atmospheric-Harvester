@@ -228,8 +228,8 @@ class WorldRenderer:
         
         # 1. Render Island Base (Depth)
         # Thicker base with jagged edges
-        depth_layers = 15
-        layer_offset = 15 # Increased offset for blockier look with textures
+        depth_layers = 10 # Reduced layer count since each layer will be taller/cleaner
+        layer_offset = 24 # Increased offset to show more of the side face (less overlap/ribbing)
         
         base_rock_img = self.assets.get('base_rock')
         base_bottom_img = self.assets.get('base_bottom')
